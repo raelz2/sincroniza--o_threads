@@ -30,10 +30,10 @@ void iniciafc(){
     fc.ult=0;
     fc.priority[1] = 1;
     fc.priority[2] = 1;
-    fc.priority[3] = 2;
-    fc.priority[4] = 2;
-    fc.priority[5] = 3;
-    fc.priority[6] = 3;
+    fc.priority[3] = 4;
+    fc.priority[4] = 4;
+    fc.priority[5] = 7;
+    fc.priority[6] = 7;
 }
 
 
@@ -70,7 +70,7 @@ void removefila(Aluno *al){
 }
 
 int sou_eu(Aluno *al){
-    int prior = 3,num = al->num;
+    int prior = 7,num = al->num;
     int pri = fc.pri,ult = fc.ult;
     while(pri!=ult){
         if(fc.priority[fc.buffer[pri]] < prior){
@@ -87,18 +87,33 @@ int sou_eu(Aluno *al){
         return 0;
 }
 
+void aumentapri(){
+    int pri = fc.pri, ult = fc.ult;
+    while(pri!=ult){
+        fc.priority[fc.buffer[pri]]--;
+        pri = (pri+1)%tam;
+    }
+    /*printf("prioridades: ");
+    for(int i=1;i<tam;i++){
+        printf("%d ", fc.priority[i]);
+    }
+    printf("\n");*/
+}
+
 void* pessoa(void* args){
     pthread_barrier_wait(&barrier);
     Aluno* al = (Aluno*) args;
-    int c=0,cont;
+    int c=0;
     double tmp;
     unsigned int t;
+    int aux;
     srand(time(NULL)+al->num);
     while(c < 3){
         
         tmp = (double)rand()/((double) RAND_MAX/(5-0));
         //printf("tempo: %lf\n", tmp);
         sleep(tmp);
+        aux = fc.priority[al->num];//mantem prioridade original do aluno
         pthread_mutex_lock(&trava);
             printf("%s esta esperando para usar o forno\n", al->nome);
             adicionafila(al);
@@ -108,7 +123,6 @@ void* pessoa(void* args){
         //printf("tempo: %lf\n", tmp);
         sleep(tmp);
         pthread_mutex_lock(&trava);
-            cont=0;
             while(1){
                 if(sou_eu(al)){
                     printf("%s esta usando o forno\n", al->nome);
@@ -118,12 +132,12 @@ void* pessoa(void* args){
                     //printf("tempo: %lf\n", tmp);
                     sleep(tmp);
                     removefila(al);
+                    fc.priority[al->num] = aux;//restaura prioridade original
+                    aumentapri();//aumenta prioridade de quem esta na fila
                     pthread_cond_broadcast(&cond);
                     break;
                 }else{
                     pthread_cond_wait(&cond,&trava);
-                    cont++;
-                    printf("%s: %d\n", al->nome,cont);
                 }
             }
         pthread_mutex_unlock(&trava);
